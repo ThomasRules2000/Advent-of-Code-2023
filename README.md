@@ -1,2 +1,2 @@
-# Advent of Code Template
-A Haskell Advent of Code template because I finally decided to not write everything in GHCi
+# Advent of Code 2023
+My solutions for Advent of Code 2023 `https://adventofcode.com/`
