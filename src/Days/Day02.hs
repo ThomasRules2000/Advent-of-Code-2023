@@ -1,5 +1,5 @@
 module Days.Day02 where
-import           Data.Bifunctor  (bimap)
+import           Data.Bifunctor  (bimap, first)
 import           Data.Char       (isDigit)
 import           Data.Foldable   (fold, foldMap')
 import           Data.List.Split (splitOn)
@@ -17,12 +17,14 @@ testDay = T.testDay parser part1 part2 8 2286
 
 data Cubes = Cubes {
     red   :: Int,
-    blue  :: Int,
-    green :: Int
+    green :: Int,
+    blue  :: Int
 } deriving Show
 
 instance Semigroup Cubes where
-    a <> b = Cubes (max (red a) (red b)) (max (blue a) (blue b)) (max (green a) (green b))
+    a <> b = Cubes {red   = max (red a)   (red b),
+                    green = max (green a) (green b),
+                    blue  = max (blue a)  (blue b)}
 
 instance Monoid Cubes where
     mempty = Cubes 0 0 0
@@ -43,12 +45,12 @@ parser = map getGame . lines
                 . splitOn ": "
 
         getCubes :: String -> Cubes
-        getCubes = foldMap' (getCube . listToTuple . words) . splitOn ", "
+        getCubes = foldMap' (getCube . first read . listToTuple . words) . splitOn ", "
 
-        getCube :: (String, String) -> Cubes
-        getCube (num, "red")   = mempty{red=read num}
-        getCube (num, "blue")  = mempty{blue=read num}
-        getCube (num, "green") = mempty{green=read num}
+        getCube :: (Int, String) -> Cubes
+        getCube (num, "red")   = mempty{red   = num}
+        getCube (num, "green") = mempty{green = num}
+        getCube (num, "blue")  = mempty{blue  = num}
 
 part1 :: Input -> Output1
 part1 = sum . map fst . filter ((\Cubes{..} -> red <= 12 && green <= 13 && blue <= 14) . fold . snd)
