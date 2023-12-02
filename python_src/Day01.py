@@ -1,45 +1,34 @@
-from pathlib import Path
-
 word_lut = {
-    "one" : 1,
-    "two" : 2,
+    "one"   : 1,
+    "two"   : 2,
     "three" : 3,
-    "four" : 4,
-    "five" : 5,
-    "six" : 6,
+    "four"  : 4,
+    "five"  : 5,
+    "six"   : 6,
     "seven" : 7,
     "eight" : 8,
-    "nine" : 9,
+    "nine"  : 9,
 }
 
-for i in range(10):
-    word_lut[str(i)] = i
+digit_lut = {str(x): x for x in range(10)}
 
-def get_first(line, part):
+def get_first(line, lut):
     for i in range(len(line)):
-        if part == 1:
-            if line[i].isdigit():
-                return int(line[i])
-        else:
-            for word, num in word_lut.items():
-                if line[i:].startswith(word):
-                    return num
+        for word, num in lut.items():
+            if line[i:].startswith(word):
+                return num
             
-def get_last(line, part):
+def get_last(line, lut):
     for i in reversed(range(len(line))):
-        if part == 1:
-            if line[i].isdigit():
-                return int(line[i])
-        else:
-            for word, num in word_lut.items():
-                if line[:i].endswith(word):
-                    return num
+        for word, num in lut.items():
+            if line[:i].endswith(word):
+                return num
 
 with open("input/Day01.txt") as infile:
     lines = infile.readlines()
 
-for part in (1, 2):
+for part, lut in enumerate((digit_lut, word_lut | digit_lut), start=1):
     total = 0
     for line in lines:
-        total += 10 * get_first(line, part) + get_last(line, part)
+        total += 10 * get_first(line, lut) + get_last(line, lut)
     print(f"Part {part}: {total}")
