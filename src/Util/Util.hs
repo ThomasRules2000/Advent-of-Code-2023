@@ -48,9 +48,6 @@ hexToInt = foldl (\acc x -> 16*acc + x) 0 . map go
                | 'A' <= c && c <= 'F' = ord c - ord 'A' + 10
                | otherwise = undefined
 
-traceTag :: Show a => String -> a -> a
-traceTag s x = trace (s <> show x) x
-
 sumTuples :: (Foldable t, Num a, Num b) => t (a, b) -> (a, b)
 sumTuples = foldl' (uncurry bimap . bimap (+) (+)) (0, 0)
 
