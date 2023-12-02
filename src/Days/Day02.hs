@@ -43,8 +43,7 @@ parser = map getGame . lines
                 . splitOn ": "
 
         getCubes :: String -> Cubes
-        getCubes = foldMap' (getCube . listToTuple . splitOn " ")
-                 . splitOn ", "
+        getCubes = foldMap' (getCube . listToTuple . words) . splitOn ", "
 
         getCube :: (String, String) -> Cubes
         getCube (num, "red")   = mempty{red=read num}
