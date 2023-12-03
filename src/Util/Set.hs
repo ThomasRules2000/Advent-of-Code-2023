@@ -1,7 +1,8 @@
 module Util.Set where
-import           Data.Maybe (fromJust, isJust)
-import           Data.Set   (Set)
-import qualified Data.Set   as Set
+import           Data.Composition ((.:))
+import           Data.Maybe       (fromJust, isJust)
+import           Data.Set         (Set)
+import qualified Data.Set         as Set
 
 (\/) :: Ord a => Set a -> Set a -> Set a
 (\/) = Set.union
@@ -11,3 +12,6 @@ import qualified Data.Set   as Set
 
 catMaybes :: Ord a => Set (Maybe a) -> Set a
 catMaybes = Set.map fromJust . Set.filter isJust
+
+mapMaybe :: (Ord a, Ord b) => (a -> Maybe b) -> Set a -> Set b
+mapMaybe = catMaybes .: Set.map
