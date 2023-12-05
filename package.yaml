@@ -45,6 +45,8 @@ dependencies:
 
 library:
   source-dirs: src
+  ghc-options:
+    - -Wall
   default-extensions:
     - ApplicativeDo
     - TupleSections
@@ -54,7 +56,7 @@ library:
     - ScopedTypeVariables
     - DeriveGeneric
     - DeriveAnyClass
-    - LambdaCase 
+    - LambdaCase
     - DeriveFunctor
     - DeriveFoldable
     - RecordWildCards
@@ -65,6 +67,7 @@ executables:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
+    - -Wall
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
@@ -79,7 +82,7 @@ executables:
       - ScopedTypeVariables
       - DeriveGeneric
       - DeriveAnyClass
-      - LambdaCase 
+      - LambdaCase
       - DeriveFunctor
       - DeriveFoldable
       - RecordWildCards
@@ -96,13 +99,14 @@ tests:
       - ScopedTypeVariables
       - DeriveGeneric
       - DeriveAnyClass
-      - LambdaCase 
+      - LambdaCase
       - DeriveFunctor
       - DeriveFoldable
       - RecordWildCards
     main: Spec.hs
     source-dirs: test
     ghc-options:
+    - -Wall
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
