@@ -11,7 +11,6 @@ import qualified Program.RunDay   as R (runDay)
 import qualified Program.TestDay  as T (testDay)
 import           System.Clock     (TimeSpec)
 import           Test.Hspec       (Spec)
-import qualified Util.Map         as Map
 
 runDay :: String -> IO (Maybe TimeSpec, Maybe TimeSpec, Maybe TimeSpec)
 runDay = R.runDay parser part1 part2
@@ -39,8 +38,8 @@ buildMaps = bimap Map.unions Map.unions . unzip . zipWith processLine [0..]
                     | isDigit c = go xs $ case acc of
                         Nothing       -> Just ((lineNo, p), [c])
                         Just (p', cs) -> Just (p', c:cs)
-                    | otherwise = (fmap (read . reverse) <$> maybeToList acc, 
-                                   if c == '.' then mempty else Map.singleton (lineNo, p) c) 
+                    | otherwise = (fmap (read . reverse) <$> maybeToList acc,
+                                   if c == '.' then mempty else Map.singleton (lineNo, p) c)
                                 <> go xs Nothing
 
 part1 :: Input -> Output1

@@ -33,7 +33,7 @@ part2 :: Input -> Output2
 part2 = sum . map findNums
 
 findNums :: String -> Int
-findNums s = firstNum * 10 + lastNum
+findNums fullString = firstNum * 10 + lastNum
     where
         numStrings = map (first show . dupe) [0..9] ++ [("one", 1), ("two", 2), ("three", 3), ("four", 4), ("five", 5), ("six", 6), ("seven", 7), ("eight", 8), ("nine", 9)]
         checkNum :: [(String, Int)] -> (String -> String -> Bool) -> String -> Maybe Int
@@ -42,5 +42,5 @@ findNums s = firstNum * 10 + lastNum
             | f numString s = Just numResult
             | otherwise = checkNum xs f s
 
-        firstNum = head $ mapMaybe (checkNum numStrings isPrefixOf) (tails s)
-        lastNum = head $ mapMaybe (checkNum numStrings isSuffixOf) (reverse $ inits s)
+        firstNum = head $ mapMaybe (checkNum numStrings isPrefixOf) (tails fullString)
+        lastNum = head $ mapMaybe (checkNum numStrings isSuffixOf) (reverse $ inits fullString)

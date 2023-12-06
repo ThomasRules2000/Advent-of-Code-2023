@@ -1,7 +1,7 @@
 module Days.Day02 where
 import           Data.Bifunctor  (bimap, first)
 import           Data.Char       (isDigit)
-import           Data.Foldable   (fold, foldMap')
+import           Data.Foldable   (foldMap')
 import           Data.List.Split (splitOn, splitOneOf)
 import qualified Program.RunDay  as R (runDay)
 import qualified Program.TestDay as T (testDay)
@@ -48,6 +48,7 @@ parser = map getGame . lines
         getCube num "red"   = mempty{red   = num}
         getCube num "green" = mempty{green = num}
         getCube num "blue"  = mempty{blue  = num}
+        getCube _   cube    = error $ "Bad cube: " <> cube
 
 part1 :: Input -> Output1
 part1 = sum . map fst . filter (\(_, Bag{..}) -> red <= 12 && green <= 13 && blue <= 14)

@@ -10,7 +10,7 @@ runDay :: String -> IO (Maybe TimeSpec, Maybe TimeSpec, Maybe TimeSpec)
 runDay = R.runDay parser part1 part2
 
 testDay :: String -> String -> Spec
-testDay = T.testDay parser part1 part2 0 0
+testDay = T.testDay parser part1 part2 288 71503
 
 type Input = [[String]]
 
