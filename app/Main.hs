@@ -1,4 +1,5 @@
 module Main where
+import qualified Config.Config      as Config (year)
 import           Control.Monad      (unless, when)
 import           Data.Bifunctor     (first)
 import           Data.List          (intercalate)
@@ -6,7 +7,7 @@ import           Data.Map.Strict    (Map)
 import qualified Data.Map.Strict    as Map
 import           Data.Maybe         (fromMaybe, mapMaybe)
 import           Data.Time.Calendar (toGregorian)
-import           Data.Time.Clock    (getCurrentTime, utctDay)
+import           Data.Time.Clock    (addUTCTime, getCurrentTime, utctDay)
 import           Data.Tuple.Extra   (fst3, snd3, thd3)
 import           Formatting         (formatToString)
 import           Formatting.Clock   (timeSpecs)
@@ -134,11 +135,17 @@ testDays = [
 main :: IO ()
 main = do
     args <- getArgs
-    toRun <- case (if "-a" `elem` args then [1..25] else mapMaybe readMaybe args) of
-                    [] -> getCurrentTime >>= (\case
-                        (_, 12, d) | d <= 25 -> return [d]
-                        _                    -> printUsage) .  toGregorian . utctDay
-                    xs -> return xs
+    -- Subtract 5 hours from the time to account for 5am puzzle release
+    (currYear, currMonth, currDay) <- toGregorian . utctDay . addUTCTime (-5 * 60 * 60) <$> getCurrentTime
+    let isAdvent = currYear == fromIntegral Config.year && currMonth == 12 && currDay <= 25
+
+    -- If we specify `-a` during advent, only attempt to run the days so far into advent to
+    -- avoid hitting the endpoint for unreleased puzzles
+    toRun <- if "-a" `elem` args then return [1..if isAdvent then currDay else 25]
+             else case mapMaybe readMaybe args of
+                -- During advent, `stack run` will run the current day
+                [] -> if isAdvent then return [currDay] else printUsage
+                xs -> return xs
     let ds | "--test" `elem` args = testDays
            | "--big"  `elem` args = bigDays
            | otherwise            = days
