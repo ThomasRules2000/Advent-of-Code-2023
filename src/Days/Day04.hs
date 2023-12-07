@@ -30,7 +30,7 @@ part1 :: Input -> Output1
 part1 = sum . fmap ((`div` 2) . (2^) . Set.size . uncurry Set.intersection)
 
 part2 :: Input -> Output2
-part2 m = sum $ fmap snd $ foldl calcNewSums (fmap ((, 1) . Set.size . uncurry Set.intersection) m) $ Map.keys m
+part2 cards = sum $ fmap snd $ foldl calcNewSums (fmap ((, 1) . Set.size . uncurry Set.intersection) cards) $ Map.keys cards
     where
         calcNewSums :: Map Int (Int, Int) -> Int -> Map Int (Int, Int)
         calcNewSums m n = Map.mapWithKey mapFun m

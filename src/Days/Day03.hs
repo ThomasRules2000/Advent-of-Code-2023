@@ -24,10 +24,7 @@ type Output1 = Int
 type Output2 = Int
 
 parser :: String -> Input
-parser = buildMaps . lines
-
-buildMaps :: [String] -> (Map (Int, Int) Int, Map (Int, Int) Char)
-buildMaps = bimap Map.unions Map.unions . unzip . zipWith processLine [0..]
+parser = bimap Map.unions Map.unions . unzip . zipWith processLine [0..] . lines
     where
         processLine :: Int -> String -> (Map (Int, Int) Int, Map (Int, Int) Char)
         processLine lineNo = first Map.fromAscList . flip go Nothing . zip [0..]
@@ -52,9 +49,8 @@ getAround (x, y) n = Set.fromAscList $ [(x+x', y+y') | x' <- [-1..1], y' <- [-1.
 part2 :: Input -> Output2
 part2 (numMap, symMap) = sum $ fmap product $ Map.filter ((==2) . length) $ Map.foldrWithKey' findGears mempty numMap
     where
-        gearSet = Map.keysSet $ Map.filter (=='*') symMap
         findGears :: (Int, Int) -> Int -> Map (Int, Int) [Int] -> Map (Int, Int) [Int]
-        findGears pos n gearMap = Map.unionWith (<>) gearMap
-                                $ Map.fromSet (const [n])
-                                $ Set.intersection gearSet
-                                $ getAround pos n
+        findGears pos n = Map.unionWith (<>)
+                        $ Map.fromSet (const [n])
+                        $ Set.intersection (Map.keysSet $ Map.filter (=='*') symMap)
+                        $ getAround pos n

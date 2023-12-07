@@ -25,10 +25,7 @@ type Output1 = Int
 type Output2 = Int
 
 parser :: String -> Input
-parser = bimap (map read . words . drop 6) (map parseMapping) . fromJust . uncons . splitOn "\n\n"
-    where
-        parseMapping :: String -> [RangeMapping]
-        parseMapping = sortOn snd3 . map (listToTuple3 . map read . words) . tail . lines
+parser = bimap (map read . words . drop 6) (map $ sortOn snd3 . map (listToTuple3 . map read . words) . tail . lines) . fromJust . uncons . splitOn "\n\n"
 
 part1 :: Input -> Output1
 part1 (nums, maps) = minimum $ map (`checkMaps` maps) nums

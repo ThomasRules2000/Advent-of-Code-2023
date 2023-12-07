@@ -40,7 +40,7 @@ findNums fullString = firstNum * 10 + lastNum
         checkNum [] _ _ = Nothing
         checkNum ((numString, numResult):xs) f s
             | f numString s = Just numResult
-            | otherwise = checkNum xs f s
+            | otherwise     = checkNum xs f s
 
         firstNum = head $ mapMaybe (checkNum numStrings isPrefixOf) (tails fullString)
-        lastNum = head $ mapMaybe (checkNum numStrings isSuffixOf) (reverse $ inits fullString)
+        lastNum  = head $ mapMaybe (checkNum numStrings isSuffixOf) (reverse $ inits fullString)
