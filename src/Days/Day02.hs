@@ -1,8 +1,10 @@
 module Days.Day02 where
+import           Control.DeepSeq (NFData)
 import           Data.Bifunctor  (bimap, first)
 import           Data.Char       (isDigit)
 import           Data.Foldable   (foldMap')
 import           Data.List.Split (splitOn, splitOneOf)
+import           GHC.Generics    (Generic)
 import qualified Program.RunDay  as R (runDay)
 import qualified Program.TestDay as T (testDay)
 import           System.Clock    (TimeSpec)
@@ -19,7 +21,7 @@ data Bag = Bag {
     red   :: Int,
     green :: Int,
     blue  :: Int
-} deriving Show
+} deriving (Show, Generic, NFData)
 
 instance Semigroup Bag where
     a <> b = Bag {red   = max (red a)   (red b),

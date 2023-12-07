@@ -42,6 +42,7 @@ dependencies:
 - attoparsec
 - parser-combinators
 - primitive
+- deepseq
 
 library:
   source-dirs: src

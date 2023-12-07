@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Program.RunDay where
-import           Config.Config                 (year)
+import           Config.Config          (year)
+import           Control.DeepSeq        (NFData, force)
 import           Control.Exception      (SomeException, evaluate, try)
 import           Control.Monad.Extra    (unlessM)
 import qualified Data.ByteString.Char8  as BS
@@ -19,51 +20,57 @@ import           Text.Printf            (printf)
 import           Text.Read              (readMaybe)
 import           Util.ParserFunc        (ParserFunc, makeParser)
 
-runDay :: (Show out1, Show out2, ParserFunc f inp) => f -> (inp -> out1) -> (inp -> out2) -> String -> IO (Maybe TimeSpec, Maybe TimeSpec, Maybe TimeSpec)
-runDay parser part1 part2 s = do
-    unlessM (doesFileExist s) $ downloadFile s
+runDay :: (NFData inp, NFData out1, NFData out2, Show out1, Show out2, ParserFunc f inp)
+       => f -> (inp -> out1) -> (inp -> out2) -> String -> IO (Maybe TimeSpec, Maybe TimeSpec, Maybe TimeSpec)
+runDay parser part1 part2 filename = do
+    -- Download the input if the file doesn't already exist
+    unlessM (doesFileExist filename) $ downloadFile filename
+
+    -- Read input file into memory to ensure this load isn't counted in the parse time
+    file <- readFile filename >>= evaluate . force
+
+    -- Time the parser, forcing the parse to complete
     parserStart <- getTime Monotonic
-    file <- try $ readFile s >>= (evaluate . makeParser parser)
+    parsed <- try $ (evaluate . force . makeParser parser) file
     parserEnd <- getTime Monotonic
-    case file of
+    case parsed of
         Left (e :: SomeException) -> putStrLn "Unable to parse input!" >> print e $> (Nothing, Nothing, Nothing)
         Right input -> do
             let parserTime = parserEnd - parserStart
-            putStrLn $ "Parser (" ++ formatToString timeSpecs parserStart parserEnd ++ ")"
+            putStrLn $ printf "Parser (%s)" $ formatToString timeSpecs parserStart parserEnd
 
-            p1Start <- getTime Monotonic
-            p1Res <- try $ evaluate $ part1 input
-            p1End <- getTime Monotonic
+            (p1Res, p1Time) <- runPart 1 part1 input
+            (p2Res, p2Time) <- runPart 2 part2 input
 
-            let p1Time = p1End - p1Start
-            putStrLn $ "Part 1 (" ++ formatToString timeSpecs p1Start p1End ++ "):"
-            putStrLn $ either (\(e :: SomeException) -> "Unable to run Part 1!\n" ++ show e) show p1Res
+            putStrLn $ printf "Total Time: %s" $ formatToString timeSpecs 0 (parserTime + p1Time + p2Time)
 
-            p2Start <- getTime Monotonic
-            p2Res <- try (evaluate (part2 input))
-            p2End <- getTime Monotonic
+            return (Just parserTime, p1Res $> p1Time, p2Res $> p2Time)
 
-            let p2Time = p2End - p2Start
-            putStrLn $ printf "Part 2 (" ++ formatToString timeSpecs p2Start p2End ++ "):"
-            putStrLn $ either (\(e :: SomeException) -> "Unable to run Part 2!\n" ++ show e) show p2Res
 
-            putStrLn $ "Total Time: " ++ formatToString timeSpecs 0 (parserTime + p1Time + p2Time)
+runPart :: (NFData out, Show out) => Int -> (inp -> out) -> inp -> IO (Maybe out, TimeSpec)
+runPart partNum partFunc input = do
+    start <- getTime Monotonic
+    res   <- try $ evaluate $ force $ partFunc input
+    end   <- getTime Monotonic
 
-            return (Just parserTime, eitherToMaybe p1Res $> p1Time, eitherToMaybe p2Res $> p2Time)
+    putStrLn $ printf "Part %d (%s):" partNum $ formatToString timeSpecs start end
+    putStrLn $ either (\(e :: SomeException) -> printf "Unable to run Part %d!\n%s" partNum $ show e) show res
+
+    return (eitherToMaybe res, end - start)
 
 downloadFile :: String -> IO ()
-downloadFile f = case readMaybe @Int $ take 2 $ drop 9 f of
-    Nothing -> putStrLn ("Can't find file " ++ f ++ "!") >> exitFailure
+downloadFile file = case readMaybe @Int $ take 2 $ drop 9 file of
+    Nothing -> putStrLn (printf "Can't find file %s!" file) >> exitFailure
     Just n -> do
         key <- BS.readFile "sessionkey.txt"
-        req <- addRequestHeader "Cookie" ("session=" <> key) 
-               <$> parseRequest ("https://adventofcode.com/" ++ show year ++ "/day/" ++ show n ++ "/input")
+        req <- addRequestHeader "Cookie" ("session=" <> key)
+               <$> parseRequest (printf "https://adventofcode.com/%d/day/%d/input" year n)
         resp <- httpBS req
         case getResponseStatusCode resp of
-            200 -> BS.writeFile f $ getResponseBody resp
-            _ -> do
-                putStrLn $ "Unable to download " <> f <> " from the server"
-                putStrLn $ "Response Code: " <> show (getResponseStatusCode resp)
+            200    -> BS.writeFile file $ getResponseBody resp
+            status -> do
+                putStrLn $ printf "Unable to download %s from the server" file
+                putStrLn $ printf "Response Code: %d" status
                 putStrLn "Response: "
                 BS.putStrLn $ getResponseBody resp
                 exitFailure
