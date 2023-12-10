@@ -2,7 +2,7 @@ module Days.Day10 where
 import           Control.DeepSeq  (NFData)
 import           Data.Bifunctor   (bimap)
 import qualified Data.Map.Strict  as Map
-import           Data.Maybe       (catMaybes, mapMaybe)
+import           Data.Maybe       (catMaybes)
 import           Data.Set         (Set)
 import qualified Data.Set         as Set
 import           Data.Tuple.Extra (both)
@@ -14,6 +14,7 @@ import           Test.Hspec       (Spec)
 import           Util.Cycle       (Cycle, next)
 import qualified Util.Map         as Map
 import           Util.Map         (Grid)
+import           Util.Util        (toMaybe)
 
 runDay :: String -> IO (Maybe TimeSpec, Maybe TimeSpec, Maybe TimeSpec)
 runDay = R.runDay parser part1 part2
@@ -37,44 +38,37 @@ parser = bimap (head . Map.keys) (fmap getPipe)
        . lines
 
 getPipe :: Char -> Set Direction
-getPipe '|' = Set.fromAscList [North, South]
-getPipe '-' = Set.fromAscList [East, West]
-getPipe 'L' = Set.fromAscList [North, East]
-getPipe 'J' = Set.fromAscList [North, West]
-getPipe '7' = Set.fromAscList [South, West]
-getPipe 'F' = Set.fromAscList [East, South]
+getPipe '|' = Set.fromDistinctAscList [North, South]
+getPipe '-' = Set.fromDistinctAscList [East, West]
+getPipe 'L' = Set.fromDistinctAscList [North, East]
+getPipe 'J' = Set.fromDistinctAscList [North, West]
+getPipe '7' = Set.fromDistinctAscList [South, West]
+getPipe 'F' = Set.fromDistinctAscList [East, South]
 getPipe _   = undefined
 
 part1 :: Input -> Output1
-part1 (start, pipes) = maximum $ fst <$> followLoop initialPoss pipes (Map.singleton start (0, startDirs)) 1
-    where (initialPoss, startDirs) = findStarts start pipes
+part1 (start, pipes) = fst $ followLoop pipes $ fst $ findStarts start pipes
 
 findStarts :: (Int, Int) -> Grid (Set Direction) -> ([((Int, Int), Direction)], Set Direction)
-findStarts (x, y) grid = Set.fromList <$> unzip starts
+findStarts (x, y) grid = Set.fromDistinctAscList <$> unzip (catMaybes [north, east, south, west])
     where
-        starts = catMaybes [north, south, east, west]
+        keepIfMember pos = fmap ((pos,) . Set.findMin)
+                         . (Map.lookup pos grid >>=)
+                         . Set.alterF (\case True->Just False; False->Nothing)
 
-        keepIfMember dir pos = do
-            s <- grid Map.!? pos
-            if Set.member dir s
-                then return (pos, Set.findMin $ Set.delete dir s)
-                else Nothing
+        north = (,North) <$> keepIfMember (x-1, y) South
+        south = (,South) <$> keepIfMember (x+1, y) North
+        east  = (,East)  <$> keepIfMember (x, y+1) West
+        west  = (,West)  <$> keepIfMember (x, y-1) East
 
-        north = (,North) <$> keepIfMember South (x-1, y)
-        south = (,South) <$> keepIfMember North (x+1, y)
-        east  = (,East)  <$> keepIfMember West (x, y+1)
-        west  = (,West)  <$> keepIfMember East (x, y-1)
-
-followLoop :: [((Int, Int), Direction)] -> Grid (Set Direction) -> Grid (Int, Set Direction) -> Int -> Grid (Int, Set Direction)
-followLoop currPoss pipes dists n
-    | null newPoss = newDists
-    | otherwise = followLoop newPoss pipes newDists $ n + 1
+followLoop :: Grid (Set Direction) -> [((Int, Int), Direction)] -> (Int, Set (Int, Int))
+followLoop pipes currPos = bimap (1+) (Set.union $ Set.fromList $ map fst currPos)
+                          $ if p1 == p2 then (1, Set.singleton p1) else followLoop pipes newPoss
     where
-        newPoss = mapMaybe newPosDir currPoss
-        newDists = foldr (\(p, _) m -> Map.insert p (n, pipes Map.! p) m) dists currPoss
+        newPoss@[(p1, _), (p2, _)] = map newPosDir currPos
 
-        newPosDir :: ((Int, Int), Direction) -> Maybe ((Int, Int), Direction)
-        newPosDir ((x,y), dir) = if Map.member newPos dists then Nothing else Just (newPos, newDir)
+        newPosDir :: ((Int, Int), Direction) -> ((Int, Int), Direction)
+        newPosDir ((x,y), dir) = (newPos, newDir)
             where
                 newPos = case dir of
                     North -> (x-1, y)
@@ -84,38 +78,39 @@ followLoop currPoss pipes dists n
                 newDir = Set.findMin $ Set.delete (next $ next dir) $ pipes Map.! newPos
 
 part2 :: Input -> Output2
-part2 (start, pipes) = (((maxX-minX+1) * (maxY-minY+1)) `div` 9) - Set.size (Set.filter (uncurry (&&) . both ((==0) . (`mod` 3))) $ Set.union loopTiles floodTiles)
+part2 (start, pipes) = ((maxX+1) * (maxY+1)) - uncurry (+) (both (Set.size . Set.filter (uncurry (&&) . both even)) (expandedLoopTiles, floodTiles))
     where
         (initialPoss, startDirs) = findStarts start pipes
-        loopTiles = expandLoop $ snd <$> followLoop initialPoss pipes (Map.singleton start (0, startDirs)) 1
+        loopTiles = snd $ followLoop pipes initialPoss
+        expandedLoopTiles = expandLoop $ Map.insert start startDirs $ Map.restrictKeys pipes loopTiles
 
-        floodTiles = floodOutside loopTiles minPos maxPos (Set.singleton minPos) Set.empty
+        floodTiles = flood expandedLoopTiles (both ((+1) . (*2)) maxPos) (Set.singleton (-1, -1)) Set.empty
 
-        minPos@(minX, minY) = (subtract 1 $ Set.findMin $ Set.map fst loopTiles, subtract 1 $ Set.findMin $ Set.map snd loopTiles)
-        maxPos@(maxX, maxY) = ((+1) $ Set.findMax $ Set.map fst loopTiles, (+1) $ Set.findMax $ Set.map snd loopTiles)
+        maxPos@(maxX, maxY) = both (Set.findMax . (`Set.map` loopTiles)) (fst, snd)
 
 expandLoop :: Grid (Set Direction) -> Set (Int, Int)
 expandLoop = Set.unions . Map.mapWithKey newTiles
     where
         newTiles :: (Int, Int) -> Set Direction -> Set (Int, Int)
-        newTiles (x, y) dirs = Set.fromList $ catMaybes [Just newPos, north, south, east, west]
+        newTiles (x, y) dirs = Set.fromDistinctAscList $ newPos : catMaybes [east, south]
             where
-                newPos@(newX, newY) = (x*3, y*3)
-                north = if Set.member North dirs then Just (newX-1, newY) else Nothing
-                south = if Set.member South dirs then Just (newX+1, newY) else Nothing
-                east  = if Set.member East  dirs then Just (newX, newY+1) else Nothing
-                west  = if Set.member West  dirs then Just (newX, newY-1) else Nothing
+                newPos@(newX, newY) = (x*2, y*2)
+                south = toMaybe (Set.member South dirs) (newX+1, newY)
+                east  = toMaybe (Set.member East  dirs) (newX, newY+1)
 
-floodOutside :: Set (Int, Int) -> (Int, Int) -> (Int, Int) -> Set (Int, Int) -> Set (Int, Int) -> Set (Int, Int)
-floodOutside loop minPos@(minX, minY) maxPos@(maxX, maxY) frontier closedSet
+flood :: Set (Int, Int) -> (Int, Int) -> Set (Int, Int) -> Set (Int, Int) -> Set (Int, Int)
+flood loop bounds@(maxX, maxY) frontier closedSet
     | Set.null newFrontier = newClosed
-    | otherwise = floodOutside loop minPos maxPos newFrontier newClosed
+    | otherwise = flood loop bounds newFrontier newClosed
     where
         newClosed = Set.union closedSet frontier
-        newFrontier = Set.unions $ Set.map newPoss frontier
+        newFrontier = Set.unions $ map newPos $ Set.toList frontier
 
-        newPoss :: (Int, Int) -> Set (Int, Int)
-        newPoss (x, y) = Set.filter validCandidate $ Set.fromAscList [(x-1, y), (x, y-1), (x, y+1), (x+1, y)]
+        newPos :: (Int, Int) -> Set (Int, Int)
+        newPos (x, y) = Set.fromDistinctAscList $ filter validCandidate [(x-1, y), (x, y-1), (x, y+1), (x+1, y)]
 
         validCandidate :: (Int, Int) -> Bool
-        validCandidate pos@(x, y) = x >= minX && x <= maxX && y >= minY && y <= maxY && Set.notMember pos newClosed && Set.notMember pos loop
+        validCandidate pos@(x, y) = x >= -1 && x <= maxX
+                                 && y >= -1 && y <= maxY
+                                 && Set.notMember pos newClosed
+                                 && Set.notMember pos loop
